@@ -10,16 +10,6 @@ provider = "mysql"
 url      = env("DATABASE_URL")
 }
 
-// SOFT DELETE를 위한 deletedAt 추가
-// 데이터베이스에 들어갈 컬럼이나 테이블명들은 snake
-// 자동으로 생성되는 시점 시간을 저장하게 해주는 기능 @default(now())
-// 수정될 때 마다 시간을 자동으로 생신해주는 기능  @updatedAt
-// user모델의 관계 설정은 category, menu, order(주문내역)과 1:n 관계를 맺는다
-// Categories Categories[] =>
-// Categories: 데이터베이스의 필드명, Categories[]:Categories모델을 참조하는 필드타입
-// 카테고리를 외래키로 참조 (메뉴테이블에 있는 category_id를 카테고리테이블에 있는 id로 참조 하고 cascade옵션 추가)
-// Category Categories @relation(fields: [CategoryId], references: [categoryId], onDelete: Cascade)
-
 //사용자모델
 // user모델의 관계 설정은 category, menu, order(주문내역)과 1:n 관계를 맺는다
 model Users {
@@ -104,8 +94,8 @@ Menus OrderMenus[]
 
 //order와 menu테이블의 연결 테이블
 //Order 모델의 orderId 참조
-//quantity 특정 주문에서 각 메뉴가 몇 개씩 주문되었는지 나타내는 필드
 //Menu 모델의 menuId 참조
+//quantity 특정 주문에서 각 메뉴가 몇 개씩 주문되었는지 나타내는 필드
 model OrderMenus {
 id    Int           @id @default(autoincrement()) @map("id")
 OrderId    Int  @map("Order_id")
@@ -117,8 +107,6 @@ Menu  Menus  @relation(fields: [MenuId], references: [menuId])
 
 @@map("Order_Menus")
 }
-
-
 
 enum Order_Status {
 ACCEPTED
