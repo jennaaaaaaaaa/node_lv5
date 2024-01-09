@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+provider = "prisma-client-js"
+}
+
+datasource db {
+provider = "mysql"
+url      = env("DATABASE_URL")
+}
+
+// SOFT DELETE를 위한 deletedAt 추가
+// 데이터베이스에 들어갈 컬럼이나 테이블명들은 snake
+// 자동으로 생성되는 시점 시간을 저장하게 해주는 기능 @default(now())
+// 수정될 때 마다 시간을 자동으로 생신해주는 기능  @updatedAt
+// user모델의 관계 설정은 category, menu, order(주문내역)과 1:n 관계를 맺는다
+// Categories Categories[] =>
+// Categories: 데이터베이스의 필드명, Categories[]:Categories모델을 참조하는 필드타입
+// 카테고리를 외래키로 참조 (메뉴테이블에 있는 category_id를 카테고리테이블에 있는 id로 참조 하고 cascade옵션 추가)
+// Category Categories @relation(fields: [CategoryId], references: [categoryId], onDelete: Cascade)
+
+//사용자모델
+// user모델의 관계 설정은 category, menu, order(주문내역)과 1:n 관계를 맺는다
+model Users {
+userId   Int       @id @default(autoincrement()) @map("user_id")
+nickname String    @unique @map("nickname")
+password String    @map("password")
+userType User_Type @default(CUSTOMER) @map("user_type")
+
+createdAt DateTime @default(now()) @map("createdAt")
+deletedAt DateTime? @map("deletedAt")
+
+Categories Categories[]
+Menus Menus[]
+Orders Orders[]
+
+@@map("Users")
+}
+
+//카테고리모델
+// user모델의 관계 설정은 category, menu, order(주문내역)과 1:n 관계를 맺는다
+// category와 menu는 1: n관계를 맺는다
+model Categories {
+categoryId   Int     @id @default(autoincrement()) @map("category_id")
+UserId       Int     @map("User_id")
+order        Int     @map("order")
+name         String  @map("name")
+
+updatedAt DateTime @updatedAt @map("updatedAt")
+deletedAt DateTime? @map("deletedAt")
+
+Menus Menus[]
+User Users @relation(fields: [UserId], references: [userId], onDelete: Cascade)
+
+@@map("Categories")
+}
+
+//메뉴모델
+// user모델의 관계 설정은 category, menu, order(주문내역)과 1:n 관계를 맺는다
+// category와 menu는 1: n관계를 맺는다
+// menu모델과 order모델은 n : m
+model Menus {
+menuId          Int        @id @default(autoincrement()) @map("menu_id")
+CategoryId      Int      @map("Category_id")
+UserId          Int      @map("User_id")
+name            String   @map("menu_name")
+order           Int      @map("menu_order")
+description     String   @map("description") @db.Text
+image           String   @map("menu_image")
+price           Int      @map("price")
+status          Menu_Status @default(FOR_SALE) @map("menu_status")
+availableQuantity Int      @map("available_quantity")
+
+updatedAt DateTime @updatedAt @map("updatedAt")
+deletedAt DateTime? @map("deletedAt")
+
+Category Categories @relation(fields: [CategoryId], references: [categoryId], onDelete: Cascade)
+User Users @relation(fields: [UserId], references: [userId], onDelete: Cascade)
+Orders OrderMenus[]
+
+@@map("Menus")
+}
+
+//주문내역모델
+// user모델의 관계 설정은 category, menu, order(주문내역)과 1:n 관계를 맺는다
+// menu모델과 order모델은 n : m
+model Orders {
+orderId    Int           @id @default(autoincrement()) @map("order_id")
+UserId     Int          @map("User_id")
+
+status     Order_Status @default(PENDING) @map("order_status")
+totalPrice Int          @map("total_price")
+
+updatedAt DateTime @updatedAt @map("updatedAt")
+createdAt DateTime @default(now()) @map("createdAt")
+deletedAt DateTime? @map("deletedAt")
+
+User Users @relation(fields: [UserId], references: [userId], onDelete: Cascade)
+Menus OrderMenus[]
+
+@@map("Orders")
+}
+
+//order와 menu테이블의 연결 테이블
+//Order 모델의 orderId 참조
+//quantity 특정 주문에서 각 메뉴가 몇 개씩 주문되었는지 나타내는 필드
+//Menu 모델의 menuId 참조
+model OrderMenus {
+id    Int           @id @default(autoincrement()) @map("id")
+OrderId    Int  @map("Order_id")
+MenuId     Int  @map("Menu_id")
+quantity   Int          @map("quantity")
+
+Order Orders @relation(fields: [OrderId], references: [orderId])
+Menu  Menus  @relation(fields: [MenuId], references: [menuId])
+
+@@map("Order_Menus")
+}
+
+
+
+enum Order_Status {
+ACCEPTED
+PENDING
+CANCEL
+}
+
+enum Menu_Status {
+FOR_SALE
+SOLD_OUT
+}
+
+enum User_Type {
+OWNER
+CUSTOMER
+}
