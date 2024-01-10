@@ -67,7 +67,7 @@ deletedAt DateTime? @map("deletedAt")
 
 Category Categories @relation(fields: [CategoryId], references: [categoryId], onDelete: Cascade)
 User Users @relation(fields: [UserId], references: [userId], onDelete: Cascade)
-Orders OrderMenus[]
+OrderMenus OrderMenus[]
 
 @@map("Menus")
 }
@@ -87,7 +87,7 @@ createdAt DateTime @default(now()) @map("createdAt")
 deletedAt DateTime? @map("deletedAt")
 
 User Users @relation(fields: [UserId], references: [userId], onDelete: Cascade)
-Menus OrderMenus[]
+OrderMenus OrderMenus[]
 
 @@map("Orders")
 }

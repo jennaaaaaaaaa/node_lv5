@@ -64,7 +64,7 @@ router.post('/sign-in', async (req, res, next) => {
       //   console.log('user', user);
 
       //nickname으로 찾은 user의 비밀번호(암호화된비밀번호)랑 입력받은 비밀번호랑 같은지 (bcrypt.compare) 확인
-      if (await bcrypt.compare(password, user.password)) throw { name: 'NotMatchPassword' };
+      if (!(await bcrypt.compare(password, user.password))) throw { name: 'NotMatchPassword' };
 
       //로그인에 성공한다면 jwt 생성
       const token = jwt.sign({ userId: user.userId }, 'Secrect_Key', { expiresIn: '1h' });

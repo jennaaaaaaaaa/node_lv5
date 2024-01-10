@@ -6,7 +6,7 @@ import authMiddleware from '../middlewares/auth.middleware.js';
 const router = express.Router();
 // 조이 유효성 검사 추가
 const schema = Joi.object({
-   name: Joi.string().min(2).max(20).required(),
+   name: Joi.string().min(2).max(50).required(),
    order: Joi.number().max(50),
 });
 
@@ -15,6 +15,7 @@ const schema = Joi.object({
 router.post('/categories', authMiddleware, async (req, res, next) => {
    try {
       const { userId } = req.user;
+      if (!userId) throw { name: 'NeedloginService' };
       if (req.user.userType !== 'OWNER') throw { name: 'ApiOnlyOwnerCanUse' };
       const validation = await schema.validateAsync(req.body);
       const { name } = validation;
@@ -52,6 +53,7 @@ router.post('/categories', authMiddleware, async (req, res, next) => {
 router.get('/categories', async (req, res, next) => {
    try {
       const categories = await prisma.categories.findMany({
+         where: { deletedAt: null },
          select: {
             categoryId: true,
             name: true,
@@ -69,7 +71,8 @@ router.get('/categories', async (req, res, next) => {
 // 카테고리 수정 API
 router.patch('/categories/:categoryId', authMiddleware, async (req, res, next) => {
    try {
-      // const { userId } = req.user;
+      const { userId } = req.user;
+      if (!userId) throw { name: 'NeedloginService' };
       if (req.user.userType !== 'OWNER') throw { name: 'ApiOnlyOwnerCanUse' };
       const { categoryId } = req.params;
 
@@ -78,7 +81,7 @@ router.patch('/categories/:categoryId', authMiddleware, async (req, res, next) =
       const category = await prisma.categories.findUnique({
          where: { categoryId: +categoryId },
       });
-      if (!category) throw { name: 'CastError' };
+      if (!category || category.deletedAt !== null) throw { name: 'CastError' };
 
       const validation = await schema.validateAsync(req.body);
       // console.log('validationvalidationvalidationv', validation.error);
@@ -115,6 +118,8 @@ router.patch('/categories/:categoryId', authMiddleware, async (req, res, next) =
 // 카테고리 삭제 API
 router.delete('/categories/:categoryId', authMiddleware, async (req, res, next) => {
    try {
+      const { userId } = req.user;
+      if (!userId) throw { name: 'NeedloginService' };
       if (req.user.userType !== 'OWNER') throw { name: 'ApiOnlyOwnerCanUse' };
 
       const { categoryId } = req.params;
@@ -124,8 +129,15 @@ router.delete('/categories/:categoryId', authMiddleware, async (req, res, next) 
       });
       if (!category) throw { name: 'CastError' };
       if (!categoryId) throw { name: 'ValidationError' };
-      await prisma.categories.delete({
+
+      await prisma.categories.update({
          where: { categoryId: +categoryId },
+         data: { deletedAt: new Date() },
+      });
+
+      await prisma.menus.updateMany({
+         where: { CategoryId: +categoryId },
+         data: { deletedAt: new Date() },
       });
       return res.status(200).json({ message: '카테고리 정보를 삭제하였습니다.' });
    } catch (err) {

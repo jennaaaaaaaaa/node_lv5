@@ -2,6 +2,8 @@ import express from 'express';
 import menuRouter from './routes/menu.router.js';
 import categoryRouter from './routes/category.router.js';
 import userRouter from './routes/user.router.js';
+import orderRouter from './routes/order.router.js';
+
 import errorHandlingMiddleware from './middlewares/error.handling.middleware.js';
 import cookieParser from 'cookie-parser';
 
@@ -12,7 +14,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api', [categoryRouter, menuRouter, userRouter]);
+app.use('/api', [categoryRouter, menuRouter, userRouter, orderRouter]);
 app.use(errorHandlingMiddleware); // 미들웨어를 적용 시키기 위해 추가한 부분 !
 
 app.listen(port, () => {

@@ -12,13 +12,15 @@ const menuSchema = Joi.object({
    image: Joi.string().min(1),
    price: Joi.string().min(1).required(),
    order: Joi.number().integer(),
-   status: Joi.string().valid('FOR_SALE', 'SOLD_OUT'),
+   status: Joi.string().valid('FOR_SALE', 'SOLD_OUT').optional(),
+   availableQuantity: Joi.number().integer(),
 });
 
 //메뉴 등록
 router.post('/categories/:categoryId/menus', authMiddleware, imageUploader.single('image'), async (req, res, next) => {
    try {
       const { userId } = req.user;
+      if (!userId) throw { name: 'NeedloginService' };
       if (req.user.userType !== 'OWNER') throw { name: 'ApiOnlyOwnerCanUse' };
 
       const { categoryId } = req.params;
@@ -29,10 +31,10 @@ router.post('/categories/:categoryId/menus', authMiddleware, imageUploader.singl
       if (!category) throw { name: 'CastError' };
 
       const validation = await menuSchema.validateAsync(req.body);
-      const { name, description, price } = validation;
+      const { name, description, price, availableQuantity } = validation;
       req.body.image = req.file.location;
 
-      if (!name || !description || !price) throw { name: 'ValidationError' };
+      if (!name || !description || !price || !availableQuantity) throw { name: 'ValidationError' };
 
       if (price < 0) {
          throw { name: 'LessThenZero' };
@@ -57,6 +59,7 @@ router.post('/categories/:categoryId/menus', authMiddleware, imageUploader.singl
             price: +price,
             status: 'FOR_SALE',
             order: orderCheck,
+            availableQuantity: +availableQuantity,
             Category: {
                connect: {
                   categoryId: +categoryId,
@@ -83,11 +86,11 @@ router.get('/categories/:categoryId/menus', async (req, res, next) => {
 
       if (!categoryId) throw { name: 'ValidationError' };
 
-      const category = await prisma.categories.findFirst({ where: { categoryId: +categoryId } });
+      const category = await prisma.categories.findFirst({ where: { categoryId: +categoryId, deletedAt: null } });
 
       if (!category) throw { name: 'CastError' };
 
-      const menus = await prisma.menus.findMany({ where: { CategoryId: +categoryId } });
+      const menus = await prisma.menus.findMany({ where: { CategoryId: +categoryId, deletedAt: null } });
 
       return res.status(200).json({ menus });
    } catch (error) {
@@ -102,10 +105,11 @@ router.get('/categories/:categoryId/menus/:menuId', async (req, res, next) => {
       if (!categoryId || !menuId) {
          throw { name: 'ValidationError' };
       }
-
       const category = await prisma.categories.findFirst({ where: { categoryId: +categoryId } });
+      const findMenu = await prisma.menus.findFirst({ where: { menuId: +menuId } });
 
-      if (!category) throw { name: 'CastError' };
+      if (!category || category.deletedAt !== null) throw { name: 'CastError' };
+      if (!findMenu || findMenu.deletedAt !== null) throw { name: 'menuCastError' };
 
       const menu = await prisma.menus.findFirst({
          where: { menuId: +menuId },
@@ -134,6 +138,8 @@ router.get('/categories/:categoryId/menus/:menuId', async (req, res, next) => {
 //수정
 router.patch('/categories/:categoryId/menus/:menuId', authMiddleware, async (req, res, next) => {
    try {
+      const { userId } = req.user;
+      if (!userId) throw { name: 'NeedloginService' };
       if (req.user.userType !== 'OWNER') throw { name: 'ApiOnlyOwnerCanUse' };
       const { categoryId, menuId } = req.params;
 
@@ -141,12 +147,12 @@ router.patch('/categories/:categoryId/menus/:menuId', authMiddleware, async (req
       if (!category) throw { name: 'CastError' };
 
       const menu = await prisma.menus.findFirst({ where: { menuId: +menuId } });
-      if (!menu) throw { name: 'menuCastError' };
+      if (!menu || menu.deletedAt !== null) throw { name: 'menuCastError' };
 
       const validation = await menuSchema.validateAsync(req.body);
       const { name, description, price, order, status } = validation;
 
-      if (!name || !description || !price || !order || !status) throw { name: 'ValidationError' };
+      if (!name || !description || !price || !order) throw { name: 'ValidationError' };
 
       if (price < 0) {
          throw { name: 'LessThenZero' };
@@ -164,6 +170,8 @@ router.patch('/categories/:categoryId/menus/:menuId', authMiddleware, async (req
          });
       }
 
+      const availableQuantity = menu;
+
       await prisma.menus.update({
          where: { menuId: +menuId },
          data: { name, description, price: +price, order, status },
@@ -177,6 +185,8 @@ router.patch('/categories/:categoryId/menus/:menuId', authMiddleware, async (req
 //삭제
 router.delete('/categories/:categoryId/menus/:menuId', authMiddleware, async (req, res, next) => {
    try {
+      const { userId } = req.user;
+      if (!userId) throw { name: 'NeedloginService' };
       if (req.user.userType !== 'OWNER') throw { name: 'ApiOnlyOwnerCanUse' };
       const { categoryId, menuId } = req.params;
 
@@ -190,7 +200,7 @@ router.delete('/categories/:categoryId/menus/:menuId', authMiddleware, async (re
       const menu = await prisma.menus.findFirst({ where: { menuId: +menuId } });
       if (!menu) throw { name: 'menuCastError' };
 
-      await prisma.menus.delete({ where: { menuId: +menuId } });
+      await prisma.menus.update({ where: { menuId: +menuId }, data: { deletedAt: new Date() } });
 
       return res.status(200).json({ message: '메뉴를 삭제하였습니다' });
    } catch (error) {
