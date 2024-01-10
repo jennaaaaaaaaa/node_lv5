@@ -84,7 +84,6 @@ router.post('/orders', authMiddleware, async (req, res, next) => {
       });
 
       //메뉴 주문한 만큼 수량 감소
-
       if (menu.availableQuantity - quantity > 0) {
          await prisma.menus.update({
             where: { menuId },
@@ -140,7 +139,7 @@ router.get('/orders/customer', authMiddleware, async (req, res, next) => {
       next(error);
    }
 });
-//소비자 주문내역으로 받아야할 정보 nickname, status, menu(name, 가격), quantity, totalPirce, createdAt(주문시간)
+//소비자 주문내역으로 받아야할 정보 status, menu(name, 가격), quantity, totalPirce, createdAt(주문시간)
 
 //주문내역조회(사장님)
 router.get('/orders/owner', authMiddleware, async (req, res, next) => {
@@ -194,7 +193,10 @@ router.patch('/orders/:orderId/status', authMiddleware, async (req, res, next) =
       const { userId } = req.user;
       if (!userId) throw { name: 'NeedloginService' };
       if (req.user.userType !== 'OWNER') throw { name: 'ApiOnlyOwnerCanUse' };
+
       const { orderId } = req.params;
+
+      //유효성검사
       const validation = await orderSchema.validateAsync(req.body);
       const { status } = validation;
       if (!orderId || !status) throw { name: 'ValidationError' };
@@ -203,7 +205,8 @@ router.patch('/orders/:orderId/status', authMiddleware, async (req, res, next) =
       if (!order) throw { name: 'orderCastError' };
 
       await prisma.orders.update({ where: { orderId: +orderId }, data: { status } });
-      return res.status(200).json({ data: '주문내역을 수정하였습니다.' });
+
+      return res.status(200).json({ message: '주문내역을 수정하였습니다.' });
    } catch (error) {
       next(error);
    }
